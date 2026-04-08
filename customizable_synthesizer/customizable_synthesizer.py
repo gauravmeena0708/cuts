@@ -1,6 +1,6 @@
 import torch
 import os
-from tabular_datasets import ADULT, German, HealthHeritage, Compas
+from tabular_datasets import Adult, German, HealthHeritage, Compas, Default, DefaultAnonymized, Shoppers, Magic, Diabetes, News, Beijing
 from denoiser import Denoiser
 from constraints import ConstraintProgramParser, ConstraintEvaluator, ConstraintCompiler
 import copy
@@ -25,12 +25,19 @@ class CuTS:
 
         # available tabular_datasets to synthesize
         available_datasets = {
-            'adult': ADULT,
+            'adult': Adult,
             'german': German,
             'healthheritage': HealthHeritage,
             'healthheritagebinaryage': HealthHeritage,
             'compas': Compas,
             'compasbinaryrace': Compas,
+            'default': Default,
+            'defaultanonymized': DefaultAnonymized,
+            'shoppers': Shoppers,
+            'magic': Magic,
+            'diabetes': Diabetes,
+            'news': News,
+            'beijing': Beijing,
         }
 
         # extract the name of the dataset from the prompt and instantiate the dataset
@@ -39,6 +46,9 @@ class CuTS:
             self.dataset = available_datasets[dataset_name.lower()](binary_race=True, device=self.device)
         elif dataset_name.lower() == 'healthheritagebinaryage':
             self.dataset = available_datasets[dataset_name.lower()](binary_age=True, device=self.device)
+        elif dataset_name.lower() == 'adult':
+            # Preserve all columns including education-num for consistency with other methods
+            self.dataset = available_datasets[dataset_name.lower()](drop_education_num=False, device=self.device)
         else:
             self.dataset = available_datasets[dataset_name.lower()](device=self.device)
 
@@ -439,12 +449,12 @@ class CuTS:
             'head': 'gumbel',#'hard_softmax',
             'base_model_epochs': 2000,
             'base_model_loss': 'total_variation',
-            'base_model_batch_size': 15000,
+            'base_model_batch_size': 1024,
             'base_model_subsampling': 16,
             'base_model_horizontal': True,
             'finetuning_epochs': 200,#40,
             'finetuning_loss': 'total_variation',
-            'finetuning_batch_size': 15000,
+            'finetuning_batch_size': 1024,
             'finetuning_subsampling': None
         }
 
@@ -460,7 +470,7 @@ class CuTS:
             'base_model_horizontal': True,
             'finetuning_epochs': 200,
             'finetuning_loss': 'total_variation',
-            'finetuning_batch_size': 15000,
+            'finetuning_batch_size': 1024,
             'finetuning_subsampling': None
         }
 

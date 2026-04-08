@@ -6,7 +6,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from query import query_marginal
-from constraints import ConstraintCompiler, ConstraintEvaluator
 
 
 def statistics(arr):
@@ -61,6 +60,7 @@ def evaluate_sampled_dataset(synthetic_dataset, workload, true_measured_workload
     returns.append(statistics([jensen_shannon_divergence(true_measured_workload[m], all_measured_fake_marginals[m]).item() for m in workload]))
 
     # train classifiers
+    from constraints import ConstraintCompiler, ConstraintEvaluator
     Xtest, ytest = ConstraintCompiler.prepare_data(dataset.get_Dtest_full_one_hot(return_torch=True), list(dataset.train_features.keys()), dataset.label, dataset)
     Xtrain_synth, ytrain_synth = ConstraintCompiler.prepare_data(synthetic_dataset.cpu(), list(dataset.train_features.keys()), dataset.label, dataset)
 

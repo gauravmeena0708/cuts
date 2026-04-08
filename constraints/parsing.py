@@ -104,12 +104,17 @@ class ConstraintProgramParser:
     escapes = {
         ' ': 'XXSPACEXX',
         '-': 'XXDASHXX',
+        '(': 'XXLPARXX',
+        ')': 'XXRPARXX',
+        '.': 'XXDOTXX',
         '>=': 'XXGEQXX',
         '<=': 'XXLEQXX',
         '>': 'XXGEXX',
         '<': 'XXLEXX',
         '!=': 'XXNEQXX',
-        '==': 'XXEQXX'
+        '==': 'XXEQXX',
+        '&': 'XXAMPXX',
+        '?': 'XXQMARKXX'
     }
 
     def __init__(self, features=None):
@@ -217,6 +222,10 @@ class ConstraintProgramParser:
                 possibly_to_escape.extend(
                     [feature_name] + [str(ft) for ft in feature_domain if str(ft) in prompt] if feature_domain is not None else []
                 )
+        
+        # Sort by length descending to ensure longer strings (more specific) are replaced first
+        possibly_to_escape.sort(key=len, reverse=True)
+        
         for string in possibly_to_escape:
             prompt = prompt.replace(string, ConstraintProgramParser.add_escapes(string))
         

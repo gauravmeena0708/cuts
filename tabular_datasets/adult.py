@@ -3,31 +3,48 @@ import numpy as np
 import pandas as pd
 from .base_dataset import BaseDataset
 import sys
+import os
 sys.path.append("..")
 from utils import to_numeric
 import pickle
 
 
-class ADULT(BaseDataset):
+class Adult(BaseDataset):
 
-    def __init__(self, name='ADULT', drop_education_num=True, single_bit_binary=False, device='cpu', random_state=42):
-        super(ADULT, self).__init__(name=name, device=device, random_state=random_state)
+    def __init__(self, name='Adult', drop_education_num=True, single_bit_binary=False, device='cpu', random_state=42):
+        super(Adult, self).__init__(name=name, device=device, random_state=random_state)
 
-        self.features = ADULT.get_features(drop_education_num=False)
+
+        self.features = Adult.get_features(drop_education_num=False)
 
         self.single_bit_binary = single_bit_binary
-        self.label = 'salary'
+        self.label = 'income'
 
         self.train_features = {key: self.features[key] for key in self.features.keys() if key != self.label}
 
-        train_data_df = pd.read_csv('tabular_datasets/ADULT/adult.data', delimiter=', ', names=list(self.features.keys()), engine='python')
-        test_data_df = pd.read_csv('tabular_datasets/ADULT/adult.test', delimiter=', ', names=list(self.features.keys()), skiprows=1, engine='python')
+        cuts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # sub/cuts
+        project_root = os.path.dirname(cuts_dir)  # sub/
+        sd_framework_root = os.path.dirname(project_root)
+        data_dir = os.path.join(sd_framework_root, 'data', 'gold', 'adult')
+        
+        train_path = os.environ.get('CUTS_TRAIN_CSV') or os.path.join(data_dir, 'train.csv')
+        test_path = os.environ.get('CUTS_TEST_CSV') or os.path.join(data_dir, 'test.csv')
+        
+        if not os.path.exists(train_path):
+            raise FileNotFoundError(f"Train file not found at {train_path}")
+        if not os.path.exists(test_path):
+            raise FileNotFoundError(f"Test file not found at {test_path}")
+            
+        train_data_df = pd.read_csv(train_path, skipinitialspace=True)
+        test_data_df = pd.read_csv(test_path, skipinitialspace=True)
 
         if drop_education_num:
             train_data_df = train_data_df.drop(['education-num'], axis=1)
             test_data_df = test_data_df.drop(['education-num'], axis=1)
-            del self.features['education-num']
-            del self.train_features['education-num']
+            if 'education-num' in self.features:
+                del self.features['education-num']
+            if 'education-num' in self.train_features:
+                del self.train_features['education-num']
         
         train_data = train_data_df.to_numpy()
         test_data = test_data_df.to_numpy()
@@ -35,14 +52,14 @@ class ADULT(BaseDataset):
         # drop missing values
         # note that the category never worked always comes with a missing value for the occupation field, hence this
         # step effectively removes the never worked category from the dataset
-        train_rows_to_keep = [not ('?' in row) for row in train_data]
-        test_rows_to_keep = [not ('?' in row) for row in test_data]
-        train_data = train_data[train_rows_to_keep]
-        test_data = test_data[test_rows_to_keep]
+        # train_rows_to_keep = [not ('?' in row) for row in train_data]
+        # test_rows_to_keep = [not ('?' in row) for row in test_data]
+        # train_data = train_data[train_rows_to_keep]
+        # test_data = test_data[test_rows_to_keep]
 
         # remove the annoying dot from the test labels
-        for row in test_data:
-            row[-1] = row[-1][:-1]
+        # for row in test_data:
+        #     row[-1] = row[-1][:-1]
 
         # convert to numeric features
         train_data_num = to_numeric(train_data, self.features, label=self.label, single_bit_binary=self.single_bit_binary)
@@ -83,7 +100,7 @@ class ADULT(BaseDataset):
         features = {
             'age': None,
             'workclass': ['Private', 'Self-emp-not-inc', 'Self-emp-inc', 'Federal-gov', 'Local-gov', 'State-gov',
-                          'Without-pay', 'Never-worked'],
+                          'Without-pay', 'Never-worked', '?'],
             'fnlwgt': None,
             'education': ['Bachelors', 'Some-college', '11th', 'HS-grad', 'Prof-school', 'Assoc-acdm', 'Assoc-voc',
                           '9th', '7th-8th', '12th', 'Masters',
@@ -94,7 +111,7 @@ class ADULT(BaseDataset):
             'occupation': ['Tech-support', 'Craft-repair', 'Other-service', 'Sales', 'Exec-managerial',
                            'Prof-specialty', 'Handlers-cleaners',
                            'Machine-op-inspct', 'Adm-clerical', 'Farming-fishing', 'Transport-moving',
-                           'Priv-house-serv', 'Protective-serv', 'Armed-Forces'],
+                           'Priv-house-serv', 'Protective-serv', 'Armed-Forces', '?'],
             'relationship': ['Wife', 'Own-child', 'Husband', 'Not-in-family', 'Other-relative', 'Unmarried'],
             'race': ['White', 'Asian-Pac-Islander', 'Amer-Indian-Eskimo', 'Other', 'Black'],
             'sex': ['Female', 'Male'],
@@ -108,8 +125,8 @@ class ADULT(BaseDataset):
                                'France', 'Dominican-Republic', 'Laos', 'Ecuador', 'Taiwan', 'Haiti', 'Columbia',
                                'Hungary', 'Guatemala', 'Nicaragua', 'Scotland',
                                'Thailand', 'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 'Peru', 'Hong',
-                               'Holand-Netherlands'],
-            'salary': ['>50K', '<=50K']
+                               'Holand-Netherlands', '?'],
+            'income': ['>50K', '<=50K']
         }
 
         if drop_education_num:

@@ -1,0 +1,230 @@
+ 1. Environment Setup
+
+  Create the Conda Environment
+
+  conda env create -f environment.yml
+
+  Activate the Environment
+
+  conda activate cuts
+
+  The environment includes Python 3.8 with PyTorch 1.6.0, scikit-learn, pandas, numpy, JAX, and XGBoost.
+
+  2. Dataset Preparation (Optional)
+
+  If you're reproducing paper experiments, prepare datasets first:
+
+  # For Health Heritage dataset, download from:
+  # https://files.sri.inf.ethz.ch/tableak/Health_Heritage/
+  # Place files in: tabular_datasets/Health_Heritage
+
+  # Fix train-test splits
+  python split_datasets.py --dataset adult
+  python split_datasets.py --dataset german
+  python split_datasets.py --dataset compas
+  python split_datasets.py --dataset compas --binary_fairness
+  python split_datasets.py --dataset healthheritage
+  python split_datasets.py --dataset healthheritage --binary_fairness
+
+  3. Generate Synthetic Data
+
+  Basic Usage (Unconditional)
+
+  from customizable_synthesizer import CuTS
+
+  # Simple program without constraints
+  program = '''
+  SYNTHESIZE: Adult;
+  END;
+  '''
+
+  cuts = CuTS(program)
+  cuts.fit(verbose=True)
+
+  # Generate 30,000 synthetic rows
+  syndata = cuts.generate_data(30000)
+
+  With Statistical Constraints
+
+  program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: STATISTICAL:
+          E[age|age > 30] == 40;
+
+  END;
+  '''
+
+  cuts = CuTS(program)
+  cuts.fit(verbose=True)
+  syndata = cuts.generate_data(30000)
+
+  4. Generate Conditional Synthetic Data
+
+  CuTS supports conditional generation through various constraint types:
+
+  Row Constraints (Hard Conditions)
+
+  # Generate only female records
+  program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: ROW CONSTRAINT: PARAM 1.0:
+          sex == Female;
+
+  END;
+  '''
+
+  Implication Constraints
+
+  # If not from US, then occupation must be in specific set
+  program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: IMPLICATION: PARAM 1.0:
+          native_country != United_States IMPLIES occupation in {Tech_support, Sales, Craft_repair,
+  Farming_fishing};
+
+  END;
+  '''
+
+  Statistical Constraints (Soft Conditions)
+
+  # Control average age
+  program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: STATISTICAL: PARAM 1.0:
+          E[age] == 30;
+
+  END;
+  '''
+
+  Fairness Constraints (Downstream Task)
+
+  # Minimize demographic parity bias
+  program = '''
+  SYNTHESIZE: Adult;
+
+      MINIMIZE: BIAS: PARAM 1.0:
+          DEMOGRAPHIC_PARITY(protected=sex, target=salary, lr=0.1, n_epochs=15, batch_size=256);
+
+  END;
+  '''
+
+  Multiple Constraints
+
+  program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: STATISTICAL: PARAM 1.0:
+          E[age|age > 30] == 40;
+
+      ENFORCE: IMPLICATION: PARAM 1.0:
+          sex == Female IMPLIES relationship in {Wife, Own_child, Other_relative, Unmarried};
+
+      MINIMIZE: BIAS: PARAM 1.0:
+          DEMOGRAPHIC_PARITY(protected=sex, target=salary, lr=0.1, n_epochs=15, batch_size=256);
+
+  END;
+  '''
+
+  5. Rejection Sampling (For Strict Conditional Generation)
+
+  For guaranteed satisfaction of logical constraints:
+
+  # Main program with soft constraints
+  program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: STATISTICAL:
+          E[age] == 35;
+
+  END;
+  '''
+
+  # Rejection program with hard constraints
+  rejection_program = '''
+  SYNTHESIZE: Adult;
+
+      ENFORCE: ROW CONSTRAINT: PARAM 1.0:
+          age > 25;
+
+      ENFORCE: IMPLICATION: PARAM 1.0:
+          sex == Female IMPLIES relationship != Husband;
+
+  END;
+  '''
+
+  cuts = CuTS(program)
+  cuts.fit(verbose=True)
+
+  # Generate with rejection sampling to ensure conditions are met
+  syndata = cuts.generate_data_with_rejection_sampling(
+      size=30000,
+      rejection_program=rejection_program,
+      max_trials=1000,
+      program_arguments={'param1': 1.0},
+      verbose=True
+  )
+
+  6. Training with Differential Privacy
+
+  program = '''
+  SYNTHESIZE: Adult;
+
+      DIFFERENTIAL PRIVACY: epsilon=1.0, delta=1e-9;
+
+      ENFORCE: STATISTICAL: PARAM 1.0:
+          E[age] == 35;
+
+  END;
+  '''
+
+  cuts = CuTS(program, workload='all_three')
+  cuts.fit(verbose=True)
+  syndata = cuts.generate_data(30000)
+
+  7. Available Datasets
+
+  - Adult: SYNTHESIZE: Adult;
+  - German: SYNTHESIZE: German;
+  - Compas: SYNTHESIZE: Compas;
+  - CompasBinaryRace: SYNTHESIZE: CompasBinaryRace;
+  - HealthHeritage: SYNTHESIZE: HealthHeritage;
+  - HealthHeritageBinaryAge: SYNTHESIZE: HealthHeritageBinaryAge;
+
+  8. Key Methods
+
+  CuTS.__init__(constraint_program, workload=None, denoiser_config=None, ...)
+
+  - Initialize with a constraint program
+  - workload: Marginal workload (default: 'all_three_with_labels')
+  - denoiser_config: Custom model configuration
+
+  cuts.fit(verbose=True, force=False, finetune=True, save=True)
+
+  - Trains the base model and finetunes with constraints
+  - force=True: Retrain even if cached model exists
+  - save=True: Save trained model for reuse
+
+  cuts.generate_data(size, base_generator=False)
+
+  - Generate synthetic data
+  - size: Number of rows
+  - base_generator=True: Use base model without finetuning
+
+  cuts.generate_data_with_rejection_sampling(size, rejection_program, ...)
+
+  - Generate data with guaranteed constraint satisfaction
+  - Uses rejection sampling for hard constraints
+
+  9. Constraint Syntax Summary
+
+  - ROW CONSTRAINT: Hard condition on each row (e.g., sex == Female)
+  - IMPLICATION: If-then rules (e.g., A IMPLIES B)
+  - STATISTICAL: Expected values, variances (e.g., E[age] == 30)
+  - BIAS: Fairness constraints for downstream tasks
+  - DIFFERENTIAL PRIVACY: Privacy guarantees
+
+  All constraints accept a PARAM <value> to control strength.

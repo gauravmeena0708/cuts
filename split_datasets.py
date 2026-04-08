@@ -1,12 +1,13 @@
 import numpy as np
 import torch
-from tabular_datasets import HealthHeritage, Compas, German
+from tabular_datasets import Adult, HealthHeritage, Compas, German
 from argparse import ArgumentParser
 
 
 def main(args):
 
     datasets = {
+        'ADULT': Adult,
         'Health_Heritage': HealthHeritage,
         'Compas': Compas,
         'German': German
@@ -16,7 +17,10 @@ def main(args):
     np.random.seed(args.random_seed)
     torch.manual_seed(args.random_seed)
 
-    if args.dataset == 'Compas':
+    if args.dataset.upper() == 'ADULT':
+        dataset = datasets['ADULT'](random_state=args.random_seed)
+        file_postfix = f'{args.random_seed}.npy'
+    elif args.dataset == 'Compas':
         dataset = datasets[args.dataset](random_state=args.random_seed, train_test_ratio=args.split_ratio, binary_race=args.binary_fairness, split_from_file=False)
         file_postfix = f'{args.split_ratio}_{args.random_seed}_{args.binary_fairness}.npy'
     elif args.dataset == 'Health_Heritage':
