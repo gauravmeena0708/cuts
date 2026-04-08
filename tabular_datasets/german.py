@@ -24,28 +24,83 @@ class German(BaseDataset):
 
         self.train_features = {key: self.features[key] for key in self.features.keys() if key != self.label}
 
-        if os.path.isfile(f'tabular_datasets/German/presplit_xtrain_{train_test_ratio}_{random_state}.npy') and split_from_file:
-            Xtrain = np.load(f'tabular_datasets/German/presplit_xtrain_{train_test_ratio}_{random_state}.npy')
-            ytrain = np.load(f'tabular_datasets/German/presplit_ytrain_{train_test_ratio}_{random_state}.npy')
-            Xtest = np.load(f'tabular_datasets/German/presplit_xtest_{train_test_ratio}_{random_state}.npy')
-            ytest = np.load(f'tabular_datasets/German/presplit_ytest_{train_test_ratio}_{random_state}.npy')
-            self.num_features = Xtrain.shape[1]
-        
-        else:
-            # load the data
-            data_df = pd.read_csv('tabular_datasets/German/german.data', delimiter=' ', names=list(self.features.keys()), engine='python')
+        if True: # Always load from file for consistency now
+            # Prefer CUTS_TRAIN_CSV / CUTS_TEST_CSV env vars (set by wrapper),
+            # fall back to gold path for standalone use.
+            cuts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            project_root = os.path.dirname(cuts_dir)
+            sd_framework_root = os.path.dirname(project_root)
+            gold_dir = os.path.join(sd_framework_root, 'data', 'gold', 'german')
+            train_path = os.environ.get('CUTS_TRAIN_CSV') or os.path.join(gold_dir, 'train.csv')
+            test_path = os.environ.get('CUTS_TEST_CSV') or os.path.join(gold_dir, 'test.csv')
 
-            # convert to numeric
-            data = data_df.to_numpy()
-            data_num = (to_numeric(data, self.features, label=self.label, single_bit_binary=self.single_bit_binary)).astype(np.float32)
+            train_df = pd.read_csv(train_path)
+            test_df = pd.read_csv(test_path)
+            
+            # Map columns if necessary (migration used full names, but get_features uses A1..A20?)
+            # The migration script used names:
+            # ['status', 'duration', 'history', 'purpose', 'amount', 'savings', 'employment', 
+            #  'installment_rate', 'personal_status', 'debtors', 'residence', 'property', 
+            #  'age', 'plans', 'housing', 'existing_credits', 'job', 'maintenance', 
+            #  'telephone', 'foreign', 'target']
+            
+            # We need to ensure get_features matches these names OR rename here.
+            # Let's rename the dataframe columns to match the legacy A-scheme if we want to keep get_features or update get_features.
+            # Updating get_features is better for readability, but more work.
+            # Let's map dataframe columns to A1..A20 to match existing get_features logic for now to minimize breakage?
+            # Actually, user wants "German Credit", the prompt implies moving towards better support.
+            # But changing feature names breaks existing checkpoints potentially.
+            # However we are in a refactor.
+            # Let's keep A1..A20 mapping for now but safer to load by position or update get_features?
+            # If we used `pd.read_csv` in migration with `names=columns`, the CSV has header `status, duration...`.
+            
+            # Let's update `get_features` in a separate call or here. If I change here, I must change get_features.
+            # I will assume we map back for now to minimize diff, or better, just rely on column order?
+            # get_features uses keys for dict lookups.
+            
+            # Let's just update the loader to use the columns from the file and we will update get_features in next step.
+            
+            # Actually, `to_numeric` relies on `self.features` keys.
+            # So I should update `get_features` to match the GOLD dataset names.
+            
+            # BUT, I can't update get_features in this single block easily if it is static.
+            # I'll update the logic here to use the GOLD files, and then do a second pass to update `get_features`.
+            
+            # Wait, `migration` script used explicit names.
+            # So `train_df` has columns "status", "duration", etc.
+            # `self.features` expects "A1", "A2".
+            # `to_numeric` will look for "A1" in `train_df` and fail.
+            
+            # So I MUST map `train_df` columns to `AX` OR update `get_features`.
+            # Updating `get_features` is cleaner.
+            pass
+            
+            # I will actually replace the whole file or large chunks.
+            # Let's do a multi-replace if possible or just replace the loader part and I will immediately follow up with feature update.
+            # Or better, just mapping here:
+            
+            column_mapping = {
+                'status': 'A1', 'duration': 'A2', 'history': 'A3', 'purpose': 'A4', 
+                'amount': 'A5', 'savings': 'A6', 'employment': 'A7', 'installment_rate': 'A8',
+                'personal_status': 'A9', 'debtors': 'A10', 'residence': 'A11', 'property': 'A12',
+                'age': 'A13', 'plans': 'A14', 'housing': 'A15', 'existing_credits': 'A16',
+                'job': 'A17', 'maintenance': 'A18', 'telephone': 'A19', 'foreign': 'A20',
+                'target': 'class'
+            }
+            train_df = train_df.rename(columns=column_mapping)
+            test_df = test_df.rename(columns=column_mapping)
+            
+            train_data = train_df.to_numpy()
+            test_data = test_df.to_numpy()
+
+            data_num = (to_numeric(train_data, self.features, label=self.label, single_bit_binary=self.single_bit_binary)).astype(np.float32)
+            test_data_num = (to_numeric(test_data, self.features, label=self.label, single_bit_binary=self.single_bit_binary)).astype(np.float32)
 
             # split labels and features
-            X, y = data_num[:, :-1], data_num[:, -1]
-            self.num_features = X.shape[1]
-
-            # create a train and test split and shuffle
-            Xtrain, Xtest, ytrain, ytest = train_test_split(X, y, test_size=self.train_test_ratio,
-                                                            random_state=self.random_state, shuffle=True)
+            Xtrain, ytrain = data_num[:, :-1], data_num[:, -1]
+            Xtest, ytest = test_data_num[:, :-1], test_data_num[:, -1] # test has same format
+            
+            self.num_features = Xtrain.shape[1]
 
         # convert to torch
         self.Xtrain, self.Xtest = torch.tensor(Xtrain).to(self.device), torch.tensor(Xtest).to(self.device)
