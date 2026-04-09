@@ -191,6 +191,7 @@ class Denoiser:
             'squared_error': mean_squared_error_loss
         }
 
+        target_marginals = {k: v.to(self.device) for k, v in target_marginals.items()}
         marginal_names = np.array(list(target_marginals.keys()), dtype='object')
         n_marginals = len(marginal_names)
 
