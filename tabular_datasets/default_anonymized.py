@@ -14,7 +14,6 @@ class DefaultAnonymized(BaseDataset):
     def __init__(self, name='Default', device='cpu', random_state=42):
         super(DefaultAnonymized, self).__init__(name=name, device=device, random_state=random_state)
 
-        self.features = DefaultAnonymized.get_features()
         self.label = 'label'
 
         # Load data from the centralized/relddpm data directory
@@ -40,6 +39,8 @@ class DefaultAnonymized(BaseDataset):
 
         train_df = pd.read_csv(train_path)
         test_df = pd.read_csv(test_path)
+
+        self.features = DefaultAnonymized.get_features(train_df=train_df, test_df=test_df)
 
         self.train_features = {k: v for k, v in self.features.items() if k != self.label}
 
@@ -88,8 +89,8 @@ class DefaultAnonymized(BaseDataset):
         self.create_feature_domain_lists()
 
     @staticmethod
-    def get_features():
-        return {
+    def get_features(train_df=None, test_df=None):
+        features = {
           "col0": None,
           "col1": ["S0", "S1"],
           "col2": ["E0", "E1", "E2", "E3", "E4", "E5", "E6"],
@@ -115,3 +116,18 @@ class DefaultAnonymized(BaseDataset):
           "col22": None,
           "label": ["L0", "L1"]
         }
+
+        if train_df is not None:
+            combined = [train_df]
+            if test_df is not None:
+                combined.append(test_df)
+            merged = pd.concat(combined, ignore_index=True)
+            for col, domain in list(features.items()):
+                if domain is None:
+                    continue
+                if col in merged.columns:
+                    features[col] = sorted(
+                        merged[col].dropna().astype(str).unique().tolist()
+                    )
+
+        return features
