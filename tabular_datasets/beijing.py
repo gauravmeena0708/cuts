@@ -15,8 +15,7 @@ class Beijing(BaseDataset):
     Beijing PM2.5 dataset for CuTS.
     This is a regression dataset where pm2.5 is the target.
     
-    Note: The base class expects the label to be the LAST feature in self.features
-    and uses self.train_features (features without label) for decode_batch.
+    Updated to use generic colN names to match scripts/2_prepare_dataset.py.
     """
     
     def __init__(self, name='Beijing', device='cpu', random_state=42):
@@ -24,7 +23,7 @@ class Beijing(BaseDataset):
 
         # Features with label at the END (required by base class)
         self.features = Beijing.get_features()
-        self.label = 'pm2.5'
+        self.label = 'label'
 
         cuts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         project_root = os.path.dirname(cuts_dir)
@@ -99,21 +98,20 @@ class Beijing(BaseDataset):
     @staticmethod
     def get_features():
         """
-        Returns feature dictionary with label (pm2.5) at the END.
-        The order must match the column reordering done in __init__.
-        cbwd is the only categorical feature.
+        Returns feature dictionary with generic names.
+        col7 corresponds to the original 'cbwd' (categorical).
         """
         return {
-            'year': None,
-            'month': None,
-            'day': None,
-            'hour': None,
-            'DEWP': None,
-            'TEMP': None,
-            'PRES': None,
-            'cbwd': ['cv', 'NE', 'NW', 'SE'],  # Wind direction - categorical
-            'Iws': None,
-            'Is': None,
-            'Ir': None,
-            'pm2.5': None,  # Label MUST be at end for base class to work
+            'col0': None,
+            'col1': None,
+            'col2': None,
+            'col3': None,
+            'col4': None,
+            'col5': None,
+            'col6': None,
+            'col7': None,
+            'col8': ['cv', 'NE', 'NW', 'SE'],  # Original 'cbwd'
+            'col9': None,
+            'col10': None,
+            'label': None,
         }
