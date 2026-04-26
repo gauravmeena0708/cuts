@@ -82,17 +82,20 @@ class Beijing(BaseDataset):
     def _calculate_mins_maxs(self):
         """
         Override for regression datasets where label is numeric.
-        Uses train_features instead of features to avoid index mismatch.
+        Xtrain excludes the label column, so train_features are computed from Xtrain
+        and the label range is appended separately from ytrain.
         """
         Xtrain = self.decode_batch(self.Xtrain.clone(), standardized=self.standardized)
         mins = []
         maxs = []
         for i, (feature_name, feature_domain) in enumerate(self.train_features.items()):
             if feature_domain is None:
-                train_min = np.min(Xtrain[:, i].astype(float))
-                train_max = np.max(Xtrain[:, i].astype(float))
-                mins.append(train_min)
-                maxs.append(train_max)
+                mins.append(float(np.min(Xtrain[:, i].astype(float))))
+                maxs.append(float(np.max(Xtrain[:, i].astype(float))))
+        # label is numerical (regression) — append its range from ytrain
+        ytrain = self.ytrain.detach().cpu().numpy()
+        mins.append(float(np.min(ytrain)))
+        maxs.append(float(np.max(ytrain)))
         self.mins, self.maxs = mins, maxs
 
     @staticmethod
@@ -102,8 +105,8 @@ class Beijing(BaseDataset):
         col7 corresponds to the original 'cbwd' (categorical).
         """
         return {
-            'col0': None,
-            'col1': None,
+            'col0': ['2010', '2011', '2012', '2013', '2014'],
+            'col1': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],
             'col2': None,
             'col3': None,
             'col4': None,
