@@ -9,3 +9,5 @@ from .magic import Magic
 from .diabetes import Diabetes
 from .news import News
 from .beijing import Beijing
+from .bank_marketing import BankMarketing
+from .telco_churn import TelcoChurn

@@ -1,1 +1,8 @@
 *.pyc
+experiment_data/
+__pycache__/
+*.pickle
+*.npy
+*.data
+*.test
+*.csv
