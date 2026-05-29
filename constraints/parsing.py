@@ -114,7 +114,8 @@ class ConstraintProgramParser:
         '!=': 'XXNEQXX',
         '==': 'XXEQXX',
         '&': 'XXAMPXX',
-        '?': 'XXQMARKXX'
+        '?': 'XXQMARKXX',
+        '+': 'XXPLUSXX',
     }
 
     def __init__(self, features=None):

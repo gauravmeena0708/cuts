@@ -1,6 +1,6 @@
 import torch
 import os
-from tabular_datasets import Adult, German, HealthHeritage, Compas, Default, DefaultAnonymized, Shoppers, Magic, Diabetes, News, Beijing, BankMarketing, TelcoChurn
+from tabular_datasets import Adult, German, HealthHeritage, Compas, Default, DefaultAnonymized, Shoppers, Magic, Diabetes, News, Beijing, BankMarketing, TelcoChurn, LawSchool
 from denoiser import Denoiser
 from constraints import ConstraintProgramParser, ConstraintEvaluator, ConstraintCompiler
 import copy
@@ -40,6 +40,7 @@ class CuTS:
             'beijing': Beijing,
             'bankmarketing': BankMarketing,
             'telcochurn': TelcoChurn,
+            'lawschool': LawSchool,
         }
 
         # extract the name of the dataset from the prompt and instantiate the dataset

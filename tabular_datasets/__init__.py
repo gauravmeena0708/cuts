@@ -11,3 +11,4 @@ from .news import News
 from .beijing import Beijing
 from .bank_marketing import BankMarketing
 from .telco_churn import TelcoChurn
+from .law_school import LawSchool
