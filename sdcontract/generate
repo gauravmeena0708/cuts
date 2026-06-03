@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+"""cuts plugin `generate` endpoint: JSON request on stdin -> JSON result on stdout.
+
+Consumes a pre-trained `model_dir` (never retrains the base denoiser). Constraints
+(shared dialect) are round-tripped through `sdcontract_core` — parsed and
+re-serialized via `to_spec(..., "equality")` into `col=val` pairs, then emitted
+as CuTS DSL `ROW CONSTRAINT: col == val` clauses — which both proves the
+cross-env contract and rejects non-equality constraints. Contract discipline: one
+JSON object on stdout, logs on stderr.
+"""
+import json
+import logging
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+
+def main() -> int:
+    req = json.load(sys.stdin)
+    real_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+    try:
+        from sdcontract_core.constraints import parse, to_spec
+        import _engine
+
+        native = [to_spec(parse(s), "equality") for s in req.get("constraints", [])]
+        out_path = _engine.generate(req, native)
+        result = {"ok": True, "output_csv": str(out_path), "message": ""}
+    except Exception as exc:
+        result = {"ok": False, "output_csv": None, "message": f"{type(exc).__name__}: {exc}"}
+    finally:
+        sys.stdout = real_stdout
+    print(json.dumps(result))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

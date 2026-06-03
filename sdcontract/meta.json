@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "plugin": "cuts",
+  "version": "0.1.0",
+  "env": "cuts",
+  "entrypoints": {
+    "train": ["python", "sdcontract/train"],
+    "generate": ["python", "sdcontract/generate"]
+  },
+  "methods": {
+    "cuts": { "variant": null }
+  }
+}
