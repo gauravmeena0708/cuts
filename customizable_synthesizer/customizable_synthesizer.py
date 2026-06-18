@@ -517,8 +517,16 @@ class CuTS:
         base_model_path += '.pickle'
 
         # workload
+        # The workload marginals are shaped by the data's one-hot dimensionality,
+        # exactly like the base model (whose path embeds it via architecture_layout's
+        # last element). Key the workload on n_dimensions too, otherwise a change in
+        # column cardinality (e.g. a category disappearing from the data) gives the
+        # base model a fresh path while the single workload file is reused stale, and
+        # finetuning compares marginals of mismatched widths (RuntimeError in the TV
+        # loss). Keying both on n_dimensions keeps them in lockstep.
         workload_folder = f'{self.path}/workloads'
         workload_path = f'{workload_folder}/workloads_{self.workload}_{self.random_seed}'
+        workload_path += f'_{self.n_dimensions}'
         if self.epsilon is not None:
             workload_path += f'_{self.epsilon}'
         if k is not None:
